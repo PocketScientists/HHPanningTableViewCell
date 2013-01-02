@@ -49,6 +49,7 @@ typedef enum {
 @property (nonatomic, assign)				NSInteger							directionMask;
 @property (nonatomic, assign)				BOOL								shouldBounce;
 @property (nonatomic, weak)                 id<HHPanningTableViewCellDelegate>  delegate;
+@property (nonatomic, assign)               CGFloat                             panOffset;
 
 - (BOOL)isDrawerRevealed;
 - (void)setDrawerRevealed:(BOOL)revealed animated:(BOOL)animated;

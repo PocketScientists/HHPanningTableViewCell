@@ -110,6 +110,7 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	
 	self.directionMask = 0;
 	self.shouldBounce = YES;
+    self.panOffset = 0.f;
 	
 	[self addObserver:self forKeyPath:@"drawerRevealed" options:0 context:(__bridge void *)kDrawerRevealedContext];
 	[self addObserver:self forKeyPath:@"containerView.frame" options:0 context:(__bridge void *)kContainerFrameContext];
@@ -278,10 +279,10 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	
 	if (revealed) {
 		if (direction == HHPanningTableViewCellDirectionRight) {
-			frame.origin.x = bounds.origin.x + bounds.size.width;
+			frame.origin.x = bounds.origin.x + bounds.size.width - self.panOffset;
 		}
 		else {
-			frame.origin.x = bounds.origin.x - bounds.size.width;
+			frame.origin.x = bounds.origin.x - bounds.size.width + self.panOffset;
 		}
 		
 		self.animationInProgress = YES;
@@ -292,8 +293,6 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 						 animations:^{
 							 [containerView setFrame:frame];
 						 } completion:^(BOOL finished) {
-							 [containerView removeFromSuperview];
-							 
 							 self.animationInProgress = NO;
 						 }];
 	}
@@ -435,7 +434,7 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 		
 		containerViewFrame.origin.x = self.panOriginX + totalPanX;
 		
-        CGFloat width = (HH_PANNING_MAXIMUM_PAN > 0.0f) ? HH_PANNING_MAXIMUM_PAN : self.bounds.size.width;
+        CGFloat width = (HH_PANNING_MAXIMUM_PAN > 0.0f) ? HH_PANNING_MAXIMUM_PAN : self.bounds.size.width - self.panOffset;
 		NSInteger directionMask = self.directionMask;
 		CGFloat leftLimit = (directionMask & HHPanningTableViewCellDirectionLeft) ? (-1.0 * width) : 0.0f;
 		CGFloat rightLimit = (directionMask & HHPanningTableViewCellDirectionRight) ? width : 0.0f;
@@ -527,10 +526,10 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
         
 		if (self.drawerRevealed) {
 			if (containerFrame.origin.x > cellBounds.origin.x) {
-				containerFrame.origin.x = cellBounds.origin.x + cellBounds.size.width;
+				containerFrame.origin.x = cellBounds.origin.x + cellBounds.size.width - self.panOffset;
 			}
 			else {
-				containerFrame.origin.x = cellBounds.origin.x - cellBounds.size.width;
+				containerFrame.origin.x = cellBounds.origin.x - cellBounds.size.width + self.panOffset;
 			}
 			
 			[containerView setFrame:containerFrame];
