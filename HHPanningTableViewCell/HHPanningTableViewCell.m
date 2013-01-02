@@ -125,11 +125,6 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 - (void)prepareForReuse
 {
 	[super prepareForReuse];
-
-	self.directionMask = 0;
-	self.shouldBounce = YES;
-    self.delegate = nil;
-    
 	[self setDrawerRevealed:NO animated:NO];
 }
 
