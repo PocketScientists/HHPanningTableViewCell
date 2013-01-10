@@ -66,8 +66,6 @@
 
 @end
 
-
-static NSString * const kDrawerRevealedContext = @"drawerRevealed";
 static NSString * const kContainerFrameContext = @"containerFrame";
 
 static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCellDirection direction);
@@ -108,11 +106,11 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	
 	[self addGestureRecognizer:self.panGestureRecognizer];
 	
+    _drawerRevealed = NO;
 	self.directionMask = 0;
 	self.shouldBounce = YES;
     self.panOffset = 0.f;
 	
-	[self addObserver:self forKeyPath:@"drawerRevealed" options:0 context:(__bridge void *)kDrawerRevealedContext];
 	[self addObserver:self forKeyPath:@"containerView.frame" options:0 context:(__bridge void *)kContainerFrameContext];
 }
 
@@ -150,7 +148,7 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	[shadowView setUserInteractionEnabled:NO];
 	[shadowView setAutoresizesSubviews:YES];
 	[shadowView setAutoresizingMask:UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight];
-		
+    
 	return shadowView;
 }
 
@@ -171,7 +169,6 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 
 - (void)dealloc
 {
-	[self removeObserver:self forKeyPath:@"drawerRevealed" context:(__bridge void *)kDrawerRevealedContext];
 	[self removeObserver:self forKeyPath:@"containerView.frame" context:(__bridge void *)kContainerFrameContext];
 }
 
@@ -196,20 +193,7 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
-    if (context == (__bridge void *)kDrawerRevealedContext) {
-		if (self.drawerRevealed) {
-			UIView* tableView = [self superview];
-			
-			if ([tableView isKindOfClass:[UITableView class]]) {
-				for (UITableViewCell *cell in [(UITableView*)tableView visibleCells]) {
-					if ((cell != self) && [cell isKindOfClass:[HHPanningTableViewCell class]]) {
-						[(HHPanningTableViewCell*)cell setDrawerRevealed:NO animated:YES];
-					}
-				}
-			}
-		}
-	}
-    else if (context == (__bridge void *)kContainerFrameContext) {
+    if (context == (__bridge void *)kContainerFrameContext) {
 		[self updateShadowFrame];
 	}
 	else {
@@ -256,105 +240,106 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	}
 }
 
-- (void)setDrawerRevealed:(BOOL)revealed direction:(HHPanningTableViewCellDirection)direction animated:(BOOL)animated
-{
-	if ([self isEditing] || (self.drawerView == nil)) {
-		return;
-	}
-	
-	self.drawerRevealed = revealed;
-	
-	UIView *drawerView = self.drawerView;
-	UIView *shadowView = self.shadowView;
-	UIView *containerView = self.containerView;
-	CGRect frame = [containerView frame];
-	
-	UIView *cellView = self;
-	CGRect bounds = [cellView bounds];
-	CGFloat duration = animated ? HH_PANNING_ANIMATION_DURATION : 0.0f;
-	
-	[cellView addSubview:drawerView];
-	[cellView addSubview:shadowView];
-	[cellView addSubview:containerView];
-	
-	if (revealed) {
-		if (direction == HHPanningTableViewCellDirectionRight) {
-			frame.origin.x = bounds.origin.x + bounds.size.width - self.panOffset;
-		}
-		else {
-			frame.origin.x = bounds.origin.x - bounds.size.width + self.panOffset;
-		}
-		
-		self.animationInProgress = YES;
-		
-		[UIView animateWithDuration:duration
-							  delay:0.0f
-							options:UIViewAnimationOptionCurveEaseOut
-						 animations:^{
-							 [containerView setFrame:frame];
-						 } completion:^(BOOL finished) {
-							 self.animationInProgress = NO;
-						 }];
-	}
-	else {
-		frame.origin.x = 0.0;
-		
-		BOOL shouldBounce = self.shouldBounce;
-		
-		if (shouldBounce) {
-			CGFloat bounceDuration = duration;
-			CGFloat offsetX = containerView.frame.origin.x;
-			CGFloat bounceMultiplier = fminf(fabsf(offsetX / HH_PANNING_TRIGGER_OFFSET), 1.0f);
-			CGFloat bounceDistance = bounceMultiplier * HH_PANNING_BOUNCE_DISTANCE;
-			
-			if (offsetX < 0.0f) {
-				bounceDistance *= -1.0;
-			}
-			
-			self.animationInProgress = YES;
-			
-			[UIView animateWithDuration:duration
-								  delay:0.0f
-								options:UIViewAnimationOptionCurveEaseOut
-							 animations:^{
-								 [containerView setFrame:frame];
-							 } completion:^(BOOL finished) {
-								 [UIView animateWithDuration:bounceDuration
-													   delay:0.0f
-													 options:UIViewAnimationCurveLinear
-												  animations:^{
-													  [containerView setFrame:CGRectOffset(frame, bounceDistance, 0.0f)];
-												  } completion:^(BOOL finished) {
-													  [UIView animateWithDuration:bounceDuration
-																			delay:0.0f
-																		  options:UIViewAnimationCurveLinear
-																	   animations:^{
-																		   [containerView setFrame:frame];
-																	   } completion:^(BOOL finished) {
-																		   [drawerView removeFromSuperview];
-																		   [shadowView removeFromSuperview];
-																		   
-																		   self.animationInProgress = NO;
-																	   }];
-												  }];
-							 }];
-		}
-		else {
-			self.animationInProgress = YES;
-			
-			[UIView animateWithDuration:duration
-								  delay:0.0f
-								options:UIViewAnimationOptionCurveEaseOut
-							 animations:^{
-								 [containerView setFrame:frame];
-							 } completion:^(BOOL finished) {
-								 [drawerView removeFromSuperview];
-								 [shadowView removeFromSuperview];
-
-								 self.animationInProgress = NO;
-							 }];
-		}
-	}
+- (void)setDrawerRevealed:(BOOL)revealed direction:(HHPanningTableViewCellDirection)direction animated:(BOOL)animated {
+    if (self.drawerRevealed != revealed) {
+        if ([self isEditing] || (self.drawerView == nil)) {
+            return;
+        }
+        
+        self.drawerRevealed = revealed;
+        
+        UIView *drawerView = self.drawerView;
+        UIView *shadowView = self.shadowView;
+        UIView *containerView = self.containerView;
+        CGRect frame = [containerView frame];
+        
+        UIView *cellView = self;
+        CGRect bounds = [cellView bounds];
+        CGFloat duration = animated ? HH_PANNING_ANIMATION_DURATION : 0.0f;
+        
+        [cellView addSubview:drawerView];
+        [cellView addSubview:shadowView];
+        [cellView addSubview:containerView];
+        
+        if (revealed) {
+            if (direction == HHPanningTableViewCellDirectionRight) {
+                frame.origin.x = bounds.origin.x + bounds.size.width - self.panOffset;
+            }
+            else {
+                frame.origin.x = bounds.origin.x - bounds.size.width + self.panOffset;
+            }
+            
+            self.animationInProgress = YES;
+            
+            [UIView animateWithDuration:duration
+                                  delay:0.0f
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                                 [containerView setFrame:frame];
+                             } completion:^(BOOL finished) {
+                                 self.animationInProgress = NO;
+                             }];
+        }
+        else {
+            frame.origin.x = 0.0;
+            
+            BOOL shouldBounce = self.shouldBounce;
+            
+            if (shouldBounce) {
+                CGFloat bounceDuration = duration;
+                CGFloat offsetX = containerView.frame.origin.x;
+                CGFloat bounceMultiplier = fminf(fabsf(offsetX / HH_PANNING_TRIGGER_OFFSET), 1.0f);
+                CGFloat bounceDistance = bounceMultiplier * HH_PANNING_BOUNCE_DISTANCE;
+                
+                if (offsetX < 0.0f) {
+                    bounceDistance *= -1.0;
+                }
+                
+                self.animationInProgress = YES;
+                
+                [UIView animateWithDuration:duration
+                                      delay:0.0f
+                                    options:UIViewAnimationOptionCurveEaseOut
+                                 animations:^{
+                                     [containerView setFrame:frame];
+                                 } completion:^(BOOL finished) {
+                                     [UIView animateWithDuration:bounceDuration
+                                                           delay:0.0f
+                                                         options:UIViewAnimationCurveLinear
+                                                      animations:^{
+                                                          [containerView setFrame:CGRectOffset(frame, bounceDistance, 0.0f)];
+                                                      } completion:^(BOOL finished) {
+                                                          [UIView animateWithDuration:bounceDuration
+                                                                                delay:0.0f
+                                                                              options:UIViewAnimationCurveLinear
+                                                                           animations:^{
+                                                                               [containerView setFrame:frame];
+                                                                           } completion:^(BOOL finished) {
+                                                                               [drawerView removeFromSuperview];
+                                                                               [shadowView removeFromSuperview];
+                                                                               
+                                                                               self.animationInProgress = NO;
+                                                                           }];
+                                                      }];
+                                 }];
+            }
+            else {
+                self.animationInProgress = YES;
+                
+                [UIView animateWithDuration:duration
+                                      delay:0.0f
+                                    options:UIViewAnimationOptionCurveEaseOut
+                                 animations:^{
+                                     [containerView setFrame:frame];
+                                 } completion:^(BOOL finished) {
+                                     [drawerView removeFromSuperview];
+                                     [shadowView removeFromSuperview];
+                                     
+                                     self.animationInProgress = NO;
+                                 }];
+            }
+        }
+    }
 }
 
 
@@ -364,18 +349,18 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer shouldReceiveTouch:(UITouch*)touch
 {
 	BOOL shouldReceiveTouch = (! self.animationInProgress) && (! self.editing) && (self.drawerView != nil);
-
+    
     if (shouldReceiveTouch) {
         UITableView* tableView = (id)[self superview];
-
+        
         if ([tableView isKindOfClass:[UITableView class]]) {
             shouldReceiveTouch = ! (tableView.isDragging || tableView.isDecelerating);
         }
     }
-
+    
     if (shouldReceiveTouch) {
         id<HHPanningTableViewCellDelegate> delegate = self.delegate;
-
+        
         if ([delegate respondsToSelector:@selector(panningTableViewCell:shouldReceivePanningTouch:)]) {
             shouldReceiveTouch  = [delegate panningTableViewCell:self shouldReceivePanningTouch:touch];
         }
@@ -395,110 +380,100 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
     return YES;
 }
 
-- (void)gestureRecognizerDidPan:(UIPanGestureRecognizer*)gestureRecognizer
-{
-    if (self.animationInProgress) {
-		return;
-	}
-	
-	UIGestureRecognizerState state = gestureRecognizer.state;
-	
-	if (state == UIGestureRecognizerStateBegan) {
-		UIView *drawerView = self.drawerView;
-		UIView *shadowView = self.shadowView;
-		UIView *containerView = self.containerView;
-		
-		[self addSubview:drawerView];
-		[self addSubview:shadowView];
-		[self addSubview:containerView];
-		[self setSelected:NO];
-				
-		self.panOriginX = containerView.frame.origin.x;
-		self.panning = NO;
-	}
-	else if (state == UIGestureRecognizerStateChanged) {
-		CGPoint translation = [gestureRecognizer translationInView:self];
-		CGFloat totalPanX = translation.x;
-		
-		if (!self.panning) {
-			if (fabsf(totalPanX) <= HH_PANNING_MINIMUM_PAN) {
-				totalPanX = 0.0f;
-			}
-			else {
-				self.panning = YES;
-			}
-		}
-		
-		UIView *containerView = self.containerView;
-		CGRect containerViewFrame = [containerView frame];
-		
-		containerViewFrame.origin.x = self.panOriginX + totalPanX;
-		
-        CGFloat width = (HH_PANNING_MAXIMUM_PAN > 0.0f) ? HH_PANNING_MAXIMUM_PAN : self.bounds.size.width - self.panOffset;
-		NSInteger directionMask = self.directionMask;
-		CGFloat leftLimit = (directionMask & HHPanningTableViewCellDirectionLeft) ? (-1.0 * width) : 0.0f;
-		CGFloat rightLimit = (directionMask & HHPanningTableViewCellDirectionRight) ? width : 0.0f;
-		
-		if (containerViewFrame.origin.x <= leftLimit) {
-			containerViewFrame.origin.x = leftLimit;
-		}
-		else if (containerViewFrame.origin.x >= rightLimit) {
-			containerViewFrame.origin.x = rightLimit;
-		}
-		
-		[containerView setFrame:containerViewFrame];
-	}
-    else if ((state == UIGestureRecognizerStateEnded) || (state == UIGestureRecognizerStateCancelled)) {
-		BOOL drawerRevealed = self.drawerRevealed;
-		BOOL drawerWasRevealed = drawerRevealed;
-		
-		CGPoint translation = [gestureRecognizer translationInView:self];
-		CGFloat totalPanX = translation.x;
-		CGFloat panOriginX = self.panOriginX;
-		BOOL isOffsetRight = (panOriginX > 0.0);
-		HHPanningTableViewCellDirection panDirection = (totalPanX > 0.0f) ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
-		HHPanningTableViewCellDirection normalizedPanDirection = drawerRevealed ? HHOppositeDirection(panDirection) : panDirection;
-		NSInteger directionMask = self.directionMask;
-        id<HHPanningTableViewCellDelegate> delegate = self.delegate;
-        BOOL isDelegateTrigger = [delegate respondsToSelector:@selector(panningTableViewCell:didTriggerWithDirection:)];
-
-		if (drawerRevealed) {
-			directionMask = isOffsetRight ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
-		}
-		
-		if (normalizedPanDirection & directionMask) {
-			CGFloat triggerOffset = HH_PANNING_TRIGGER_OFFSET;
-
-			if (fabsf(totalPanX) > triggerOffset) {
-				drawerRevealed = !drawerRevealed;
-			}
-			else if (HH_PANNING_USE_VELOCITY) {
-				CGPoint velocity = [gestureRecognizer velocityInView:self];
-				CGFloat velocityX = velocity.x;
-				
-				if (fabsf(velocityX) > triggerOffset) {
-					drawerRevealed = !drawerRevealed;
-				}
-			}
-		}
-	
-		HHPanningTableViewCellDirection direction = panDirection;
-		
-		if (drawerRevealed == drawerWasRevealed) {
-			direction = isOffsetRight ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
-		}
-		
-        if (isDelegateTrigger && (drawerRevealed != drawerWasRevealed)) {
-            [self setDrawerRevealed:NO direction:direction animated:YES];
+- (void)gestureRecognizerDidPan:(UIPanGestureRecognizer*)gestureRecognizer {
+    if (!self.animationInProgress) {
+        
+        UIGestureRecognizerState state = gestureRecognizer.state;
+        
+        if (state == UIGestureRecognizerStateBegan) {
+            UIView *drawerView = self.drawerView;
+            UIView *shadowView = self.shadowView;
+            UIView *containerView = self.containerView;
             
-            [delegate panningTableViewCell:self didTriggerWithDirection:panDirection];
+            [self addSubview:drawerView];
+            [self addSubview:shadowView];
+            [self addSubview:containerView];
+            [self setSelected:NO];
+            
+            self.panOriginX = self.containerView.frame.origin.x;
+            self.panning = NO;
         }
-        else {
-            [self setDrawerRevealed:drawerRevealed direction:direction animated:YES];
+        else if (state == UIGestureRecognizerStateChanged) {
+            CGPoint translation = [gestureRecognizer translationInView:self];
+            CGFloat totalPanX = translation.x;
+            
+            if (!self.panning) {
+                if (fabsf(totalPanX) <= HH_PANNING_MINIMUM_PAN) {
+                    totalPanX = 0.0f;
+                }
+                else {
+                    self.panning = YES;
+                }
+            }
+            
+            UIView *containerView = self.containerView;
+            CGRect containerViewFrame = [containerView frame];
+            
+            containerViewFrame.origin.x = self.panOriginX + totalPanX;
+            
+            CGFloat width = (HH_PANNING_MAXIMUM_PAN > 0.0f) ? HH_PANNING_MAXIMUM_PAN : self.bounds.size.width - self.panOffset;
+            NSInteger directionMask = self.directionMask;
+            CGFloat leftLimit = (directionMask & HHPanningTableViewCellDirectionLeft) ? (-1.0 * width) : 0.0f;
+            CGFloat rightLimit = (directionMask & HHPanningTableViewCellDirectionRight) ? width : 0.0f;
+            
+            if (containerViewFrame.origin.x <= leftLimit) {
+                containerViewFrame.origin.x = leftLimit;
+            }
+            else if (containerViewFrame.origin.x >= rightLimit) {
+                containerViewFrame.origin.x = rightLimit;
+            }
+            
+            [containerView setFrame:containerViewFrame];
         }
-		
-		self.panning = NO;
-	}
+        else if ((state == UIGestureRecognizerStateEnded) || (state == UIGestureRecognizerStateCancelled)) {
+            BOOL drawerRevealed = self.drawerRevealed;
+            BOOL drawerWasRevealed = drawerRevealed;
+            
+            CGPoint translation = [gestureRecognizer translationInView:self];
+            CGFloat totalPanX = translation.x;
+            CGFloat panOriginX = self.panOriginX;
+            BOOL isOffsetRight = (panOriginX > 0.0);
+            HHPanningTableViewCellDirection panDirection = (totalPanX > 0.0f) ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
+            HHPanningTableViewCellDirection normalizedPanDirection = drawerRevealed ? HHOppositeDirection(panDirection) : panDirection;
+            NSInteger directionMask = self.directionMask;
+            
+            if (drawerRevealed) {
+                directionMask = isOffsetRight ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
+            }
+            
+            if (normalizedPanDirection & directionMask) {
+                CGFloat triggerOffset = HH_PANNING_TRIGGER_OFFSET;
+                
+                if (fabsf(totalPanX) > triggerOffset) {
+                    drawerRevealed = !drawerRevealed;
+                }
+                else if (HH_PANNING_USE_VELOCITY) {
+                    CGPoint velocity = [gestureRecognizer velocityInView:self];
+                    CGFloat velocityX = velocity.x;
+                    
+                    if (fabsf(velocityX) > triggerOffset) {
+                        drawerRevealed = !drawerRevealed;
+                    }
+                }
+            }
+            
+            HHPanningTableViewCellDirection direction = panDirection;
+            
+            if (drawerRevealed == drawerWasRevealed) {
+                direction = isOffsetRight ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
+            }
+            else {
+                [self setDrawerRevealed:drawerRevealed direction:direction animated:YES];
+            }
+            
+            self.panning = NO;
+        }
+    }
 }
 
 - (void)layoutSubviews
@@ -516,7 +491,7 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	UIView* backgroundView = self.backgroundView;
 	UIView* accessoryView = self.accessoryView;
 	UIView* contentView = self.contentView;
-
+    
 	if (!self.animationInProgress) {
 		CGRect cellBounds = [cellView bounds];
         CGRect containerFrame = [containerView frame];
@@ -568,11 +543,11 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 		if (subview == backgroundView) {
 			continue;
 		}
-
+        
 		if (subview == accessoryView) {
 			continue;
 		}
-
+        
 		if (subview == contentView) {
 			continue;
 		}
@@ -606,8 +581,39 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
 	[shadowView setFrame:shadowFrame];
 }
 
+///////////////////////////////////////////////////////////
+#pragma mark -
+#pragma mark - UIView
+///////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////
+#pragma mark -
+#pragma mark - HHPanningTableViewCell
+///////////////////////////////////////////////////////////
+
+- (void)setDrawerRevealed:(BOOL)drawerRevealed {
+    if (_drawerRevealed != drawerRevealed) {
+        if ([self.superview isKindOfClass:[UITableView class]]) {
+            for (UITableViewCell *cell in [(UITableView*)self.superview visibleCells]) {
+                if ((cell != self) && [cell isKindOfClass:[HHPanningTableViewCell class]]) {
+                    [(HHPanningTableViewCell*)cell setDrawerRevealed:NO animated:YES];
+                }
+            }
+        }
+        if ([self.delegate respondsToSelector:@selector(panningTableViewCell:didChangeDrawerRevealed:)]) {
+            [self.delegate panningTableViewCell:self didChangeDrawerRevealed:drawerRevealed];
+        }
+        _drawerRevealed = drawerRevealed;
+    }
+}
+
 @end
 
+///////////////////////////////////////////////////////////
+#pragma mark -
+#pragma mark - static methods
+///////////////////////////////////////////////////////////
 
 static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCellDirection direction)
 {

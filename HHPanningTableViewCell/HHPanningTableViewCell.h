@@ -64,6 +64,6 @@ typedef enum {
 - (BOOL)panningTableViewCell:(HHPanningTableViewCell *)cell shouldReceivePanningTouch:(UITouch*)touch;
 
 // If implemented this this will be triggered instead of fully revealing
-- (void)panningTableViewCell:(HHPanningTableViewCell *)cell didTriggerWithDirection:(HHPanningTableViewCellDirection)direction;
+- (void)panningTableViewCell:(HHPanningTableViewCell *)cell didChangeDrawerRevealed:(BOOL)drawerRevealed;
 
 @end
