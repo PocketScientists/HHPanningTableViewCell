@@ -308,13 +308,13 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
                                                          options:UIViewAnimationCurveLinear
                                                       animations:^{
                                                           [containerView setFrame:CGRectOffset(frame, bounceDistance, 0.0f)];
-                                                      } completion:^(BOOL finished) {
+                                                      } completion:^(BOOL finishedTwo) {
                                                           [UIView animateWithDuration:bounceDuration
                                                                                 delay:0.0f
                                                                               options:UIViewAnimationCurveLinear
                                                                            animations:^{
                                                                                [containerView setFrame:frame];
-                                                                           } completion:^(BOOL finished) {
+                                                                           } completion:^(BOOL finishedThree) {
                                                                                [drawerView removeFromSuperview];
                                                                                [shadowView removeFromSuperview];
                                                                                
@@ -462,13 +462,8 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
                 }
             }
             
-            HHPanningTableViewCellDirection direction = panDirection;
-            
-            if (drawerRevealed == drawerWasRevealed) {
-                direction = isOffsetRight ? HHPanningTableViewCellDirectionRight : HHPanningTableViewCellDirectionLeft;
-            }
-            else {
-                [self setDrawerRevealed:drawerRevealed direction:direction animated:YES];
+            if (drawerRevealed != drawerWasRevealed) {
+                [self setDrawerRevealed:drawerRevealed direction:panDirection animated:YES];
             }
             
             self.panning = NO;
