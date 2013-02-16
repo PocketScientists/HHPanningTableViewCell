@@ -305,13 +305,13 @@ static HHPanningTableViewCellDirection HHOppositeDirection(HHPanningTableViewCel
                                  } completion:^(BOOL finished) {
                                      [UIView animateWithDuration:bounceDuration
                                                            delay:0.0f
-                                                         options:UIViewAnimationCurveLinear
+                                                         options:UIViewAnimationOptionCurveLinear
                                                       animations:^{
                                                           [containerView setFrame:CGRectOffset(frame, bounceDistance, 0.0f)];
                                                       } completion:^(BOOL finishedTwo) {
                                                           [UIView animateWithDuration:bounceDuration
                                                                                 delay:0.0f
-                                                                              options:UIViewAnimationCurveLinear
+                                                                              options:UIViewAnimationOptionCurveLinear
                                                                            animations:^{
                                                                                [containerView setFrame:frame];
                                                                            } completion:^(BOOL finishedThree) {
